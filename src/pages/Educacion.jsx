@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Container, Row, Col, Card, Button, Table, Badge, Accordion } from 'react-bootstrap';
 import { getSyntheticCase } from '../services/api';
-import { getLabel } from '../utils/translations';
 
 const Educacion = () => {
     const [syntheticData, setSyntheticData] = useState(null);
@@ -10,20 +9,58 @@ const Educacion = () => {
     const generateDemo = async () => {
         setLoading(true);
         try {
-            // Usamos diabetes como ejemplo por defecto para la educación
+            // Solicitamos un caso de Diabetes al backend
             const { data } = await getSyntheticCase('diabetes');
             setSyntheticData(data);
         } catch (error) {
-            console.error(error);
+            console.error("Error generando caso:", error);
         } finally {
             setLoading(false);
         }
+    };
+
+    // --- FUNCIONES AUXILIARES PARA MOSTRAR DATOS ---
+
+    const getGenderLabel = (data) => {
+        // Intenta detectar género desde varias columnas posibles
+        if (data.gender_Male === undefined && data.gender_Female === undefined) {
+             // Fallback por si la columna no existe en el CSV
+             return 'No especificado';
+        }
+        
+        const isMale = Number(data.gender_Male) === 1;
+        const isFemale = Number(data.gender_Female) === 1;
+
+        if (isMale) return 'Masculino';
+        if (isFemale) return 'Femenino';
+        return 'Otro';
+    };
+
+    const getSmokingStatus = (data) => {
+        if (Number(data.smoking_history_current) === 1) return <Badge bg="danger">Fumador Actual</Badge>;
+        if (Number(data.smoking_history_former) === 1) return <Badge bg="warning">Ex-Fumador</Badge>;
+        if (Number(data.smoking_history_never) === 1) return <Badge bg="success">Nunca fumó</Badge>;
+        return <span className="text-muted">No registrado</span>;
+    };
+
+    const getBloodPressure = (data) => {
+        // A veces la columna viene como 'blood_pressure', otras como 'ap_hi' (Cardio)
+        const bp = data.blood_pressure || data.ap_hi;
+        
+        if (bp && bp > 0 && bp !== 120) { 
+            // Mostramos el dato si existe y no es el default exacto (a menos que sea real)
+            return Math.round(bp);
+        }
+        if (bp === 120) return 120; // Si es 120 real, lo mostramos
+        
+        return null; // Si no hay dato confiable
     };
 
     return (
         <Container className="py-5">
             <h2 className="mb-4 fw-bold text-primary">Módulo Educativo: IA y Datos Sintéticos</h2>
             
+            {/* SECCIÓN EDUCATIVA RESTAURADA */}
             <Row className="mb-5">
                 <Col lg={8}>
                     <p className="lead text-muted">
@@ -78,7 +115,7 @@ const Educacion = () => {
                 <div className="text-center mb-4">
                     <h3>🧪 Laboratorio de Generación de Casos</h3>
                     <p className="text-muted">
-                        Pulsa el botón para pedirle a la IA que genere un perfil de paciente sintético basado en patrones de Diabetes.
+                        Pulsa el botón para pedirle a la IA que genere un perfil de paciente sintético con datos variados.
                     </p>
                     <Button 
                         variant="primary" 
@@ -92,55 +129,86 @@ const Educacion = () => {
 
                 {syntheticData && (
                     <div className="animate__animated animate__fadeIn">
-                        <h5 className="text-center mb-3">Perfil Generado Artificialmente</h5>
                         <Row className="justify-content-center">
                             <Col md={8}>
                                 <Card>
+                                    <Card.Header className="bg-primary text-white text-center">
+                                        Perfil Clínico Generado (IA)
+                                    </Card.Header>
                                     <Table striped bordered hover responsive className="mb-0">
                                         <thead>
                                             <tr>
-                                                <th>Variable Clínica</th>
+                                                <th style={{width: '40%'}}>Variable Clínica</th>
                                                 <th>Valor Generado</th>
                                                 <th>Interpretación</th>
                                             </tr>
                                         </thead>
                                         <tbody>
+                                            {/* --- DEMOGRÁFICOS --- */}
                                             <tr>
                                                 <td>Edad</td>
-                                                <td>{syntheticData.age} años</td>
+                                                <td>{Math.floor(syntheticData.age)} años</td>
                                                 <td>-</td>
                                             </tr>
                                             <tr>
                                                 <td>Género</td>
-                                                <td>
-                                                    {syntheticData.gender_Male === 1 ? 'Masculino' : 
-                                                     syntheticData.gender_Female === 1 ? 'Femenino' : 'Otro'}
-                                                </td>
-                                                <td>Variable categórica</td>
+                                                <td>{getGenderLabel(syntheticData)}</td>
+                                                <td>Variable demográfica</td>
                                             </tr>
+
+                                            {/* --- SIGNOS VITALES --- */}
                                             <tr>
-                                                <td>Glucosa</td>
-                                                <td className={syntheticData.glucose > 140 ? 'text-danger fw-bold' : ''}>
-                                                    {syntheticData.glucose} mg/dL
-                                                </td>
+                                                <td>IMC (Índice Masa Corporal)</td>
+                                                <td>{Number(syntheticData.bmi).toFixed(1)}</td>
                                                 <td>
-                                                    {syntheticData.glucose > 200 ? <Badge bg="danger">Muy Alta</Badge> : 
-                                                     syntheticData.glucose > 140 ? <Badge bg="warning">Elevada</Badge> : 
+                                                    {syntheticData.bmi >= 30 ? <Badge bg="danger">Obesidad</Badge> : 
+                                                     syntheticData.bmi >= 25 ? <Badge bg="warning">Sobrepeso</Badge> : 
                                                      <Badge bg="success">Normal</Badge>}
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td>IMC (BMI)</td>
-                                                <td>{syntheticData.bmi}</td>
+                                                <td>Presión Arterial</td>
                                                 <td>
-                                                    {syntheticData.bmi > 30 ? 'Obesidad' : 'Peso variable'}
+                                                    {getBloodPressure(syntheticData) ? `${getBloodPressure(syntheticData)} mmHg` : 'N/A'}
+                                                </td>
+                                                <td>
+                                                    {getBloodPressure(syntheticData) >= 140 ? <Badge bg="danger">Hipertensión</Badge> :
+                                                     getBloodPressure(syntheticData) >= 130 ? <Badge bg="warning">Elevada</Badge> :
+                                                     getBloodPressure(syntheticData) ? <Badge bg="success">Normal</Badge> : '-'}
                                                 </td>
                                             </tr>
-                                            {/* Puedes agregar más filas según desees mostrar */}
+                                            
+                                            {/* --- METABÓLICO --- */}
+                                            <tr>
+                                                <td>Glucosa en Sangre</td>
+                                                <td className={syntheticData.glucose > 140 ? 'fw-bold text-danger' : ''}>
+                                                    {Math.round(syntheticData.glucose)} mg/dL
+                                                </td>
+                                                <td>
+                                                    {syntheticData.glucose > 200 ? <Badge bg="danger">Diabetes</Badge> : 
+                                                     syntheticData.glucose > 100 ? <Badge bg="warning">Pre-diabetes</Badge> : 
+                                                     <Badge bg="success">Normal</Badge>}
+                                                </td>
+                                            </tr>
+
+                                            {/* --- HISTORIAL / RIESGOS --- */}
+                                            <tr>
+                                                <td>Hábito Tabáquico</td>
+                                                <td colSpan="2">{getSmokingStatus(syntheticData)}</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Enfermedad Cardíaca</td>
+                                                <td>
+                                                    {Number(syntheticData.heart_disease) === 1 ? 'Presente' : 'Ausente'}
+                                                </td>
+                                                <td>
+                                                    {Number(syntheticData.heart_disease) === 1 && <Badge bg="danger">Riesgo Alto</Badge>}
+                                                </td>
+                                            </tr>
                                         </tbody>
                                     </Table>
                                     <Card.Footer className="text-center text-muted small">
-                                        Este perfil no existe en la realidad. Ha sido generado matemáticamente.
+                                        ℹ️ Este perfil no existe en la realidad. Ha sido generado matemáticamente por una red CTGAN.
                                     </Card.Footer>
                                 </Card>
                             </Col>
