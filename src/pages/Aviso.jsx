@@ -18,7 +18,7 @@ const Aviso = () => {
                 <Card.Body>
                     <Card.Text>
                         El objetivo de este portal es estrictamente <strong>educativo y demostrativo</strong>. 
-                        Busca ilustrar cómo funcionan los algoritmos de Inteligencia Artificial (específicamente Regresión Logística y Redes Generativas Antagónicas) en el contexto de la salud pública.
+                        Busca ilustrar cómo funcionan los algoritmos de Inteligencia Artificial (específicamente Regresión Logística y Redes Generativas Antagónicas) en el contexto de la salud.
                     </Card.Text>
                 </Card.Body>
             </Card>
