@@ -115,7 +115,7 @@ const Educacion = () => {
                 <div className="text-center mb-5">
                     <h2 className="fw-bold text-primary">Biblioteca de Enfermedades Crónicas</h2>
                     <p className="lead text-muted">
-                        Entendiendo las patologías que afectan a la población ecuatoriana y sus factores de riesgo.
+                        Entendiendo las patologías que afectan a la población general y sus factores de riesgo.
                     </p>
                 </div>
 

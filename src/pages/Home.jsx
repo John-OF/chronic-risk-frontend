@@ -197,13 +197,14 @@ const Home = () => {
             </Accordion>
           </Col>
         </Row>
-
+        {/*
         <div className="text-center mt-5">
           <p className="text-muted">¿Listo para ver la teoría en acción?</p>
           <Button as={Link} to="/simulacion" variant="primary" size="lg" className="rounded-pill px-5 shadow">
             Ir al Simulador
           </Button>
         </div>
+        */}
       </Container>
     </div>
   );

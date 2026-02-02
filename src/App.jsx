@@ -9,6 +9,7 @@ import Metricas from './pages/Metricas';
 import Aviso from './pages/Aviso';
 import Educacion from './pages/Educacion';
 import Evaluacion from './pages/Evaluacion';
+import Historial from "./pages/Historial";
 
 const NotFound = () => (
   <div className="p-5 text-center">
@@ -30,6 +31,7 @@ function App() {
             <Route path="/metricas" element={<Metricas />} />
             <Route path="/evaluacion" element={<Evaluacion />} />
             <Route path="/aviso" element={<Aviso />} />
+            <Route path="/historial" element={<Historial />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
@@ -39,7 +41,7 @@ function App() {
             <div className="footer-brand mb-3">
               <img className="footer-logo" src="/icon.jpeg" alt="ChronicRisk AI" />
               <div className="text-start">
-                <h5 className="footer-title">ChronicRisk AI</h5>
+                <h5 className="footer-title">CronicApp</h5>
                 <div className="footer-sub">Plataforma de predicción de enfermedades crónicas basada en Machine Learning</div>
               </div>
             </div>

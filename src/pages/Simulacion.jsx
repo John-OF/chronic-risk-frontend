@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert, ProgressBar, Nav, Spinner, Badge, OverlayTrigger, Tooltip } from 'react-bootstrap';
 import { getConfig, predictRisk, getSyntheticCase } from '../services/api';
+import { saveHistoryEntry } from '../services/historyService';
 import { getLabel } from '../utils/translations';
 import Swal from 'sweetalert2';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -101,6 +102,9 @@ const Simulacion = () => {
     const [currentResult, setCurrentResult] = useState(null);
     const [baseResult, setBaseResult] = useState(null);
     const [error, setError] = useState(null);
+    const [baseCase, setBaseCase] = useState(null); 
+    // baseCase = snapshot completo (inputs + result + timestamp) del escenario fijado
+
 
     // 1. Cargar configuración
     useEffect(() => {
@@ -110,6 +114,7 @@ const Simulacion = () => {
             setCurrentResult(null);
             setBaseResult(null); 
             setFormData({}); 
+            setBaseCase(null);
             try {
                 const { data } = await getConfig(selectedDisease);
                 setConfig(data);
@@ -245,34 +250,130 @@ const Simulacion = () => {
         return payload;
     };
 
+    const makeId = () => {
+        if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+        return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    };
+
+    const buildRunSnapshot = (inputs, apiData) => ({
+        id: makeId(),
+        timestamp: Date.now(),
+        inputs: { ...inputs }, // aquí guardamos tu formData completo (incluye sintético)
+        result: {
+            probability: apiData?.probability,
+            prediction: apiData?.prediction,
+        },
+        top_features: apiData?.top_features ?? null,
+    });
+
+    const saveSinglePredictionToHistory = (apiData) => {
+    const entry = {
+        type: "single",
+        id: makeId(),
+        timestamp: Date.now(),
+        disease: selectedDisease,
+        inputs: { ...formData },
+        result: {
+        probability: apiData?.probability,
+        prediction: apiData?.prediction,
+        },
+        top_features: apiData?.top_features ?? null,
+        notes: "",
+    };
+    saveHistoryEntry(entry);
+    };
+
+    const saveComparisonToHistory = (newApiData) => {
+        if (!baseCase) return;
+
+        const newSnap = buildRunSnapshot(formData, newApiData);
+
+        const basePct = (baseCase.result.probability ?? 0) * 100;
+        const newPct = (newApiData.probability ?? 0) * 100;
+        const diff = newPct - basePct;
+
+        const entry = {
+            type: "comparison",
+            id: makeId(),
+            timestamp: Date.now(),
+            disease: selectedDisease,
+            base: {
+            timestamp: baseCase.timestamp,
+            inputs: { ...baseCase.inputs },
+            result: { ...baseCase.result },
+            },
+            scenarios: [
+            {
+                timestamp: newSnap.timestamp,
+                inputs: { ...newSnap.inputs },
+                result: { ...newSnap.result },
+            },
+            ],
+            delta: {
+            probability_points: Number(diff.toFixed(1)), // diferencia en puntos porcentuales
+            direction: diff < 0 ? "decrease" : diff > 0 ? "increase" : "same",
+            },
+            top_features_new: newApiData?.top_features ?? null,
+            notes: "",
+        };
+
+        saveHistoryEntry(entry);
+    };
+
+
     // 4. Enviar predicción
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
+        setError(null);
+
         try {
             const payload = preparePayload();
             const { data } = await predictRisk(selectedDisease, payload);
+
             setCurrentResult(data);
-            
+
+            // ✅ Guardar historial
+            if (baseResult) {
+            // estamos en modo comparación: guardar base + nuevo + delta
+            saveComparisonToHistory(data);
+            } else {
+            // predicción normal
+            saveSinglePredictionToHistory(data);
+            }
+
             if (!baseResult && data.prediction === 1) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Atención',
-                    text: `El modelo ha detectado un riesgo elevado (${(data.probability * 100).toFixed(1)}%)`,
-                    confirmButtonColor: '#d33'
-                });
+            Swal.fire({
+                icon: 'warning',
+                title: 'Atención',
+                text: `El modelo ha detectado un riesgo elevado (${(data.probability * 100).toFixed(1)}%)`,
+                confirmButtonColor: '#d33'
+            });
             }
         } catch (err) {
+            console.error(err);
             setError("Error al procesar la predicción. Revisa que todos los campos numéricos tengan valores.");
         } finally {
             setLoading(false);
         }
     };
 
+
     // 5. Comparación
     const handleSetBaseCase = () => {
+        // Guardamos el escenario base completo (inputs + resultado)
+        setBaseCase({
+            timestamp: Date.now(),
+            inputs: { ...formData },
+            result: {
+                probability: currentResult?.probability,
+                prediction: currentResult?.prediction,
+            },
+        });
+
         setBaseResult(currentResult);
         setCurrentResult(null);
+
         Swal.fire({
             icon: 'success',
             title: 'Escenario Base Fijado',
@@ -280,10 +381,14 @@ const Simulacion = () => {
         });
     };
 
+    
+
     const handleResetComparison = () => {
+        setBaseCase(null);
         setBaseResult(null);
         setCurrentResult(null);
     };
+
 
     // Renderizado de campos numéricos
     const renderNumberInput = (feat) => {

@@ -27,7 +27,7 @@ const MyNavbar = () => {
             className="d-inline-block align-top me-2 rounded-circle border border-info"
             alt="Logo"
           />
-          ChronicRisk AI
+          CronicApp
         </Navbar.Brand>
 
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
@@ -50,6 +50,9 @@ const MyNavbar = () => {
             </Nav.Link>
             <Nav.Link as={NavLink} to="/aviso" className="px-3 navlink">
               Aviso Legal
+            </Nav.Link>
+            <Nav.Link as={NavLink} to="/historial" className="px-3 navlink">
+              Historial
             </Nav.Link>
           </Nav>
         </Navbar.Collapse>
